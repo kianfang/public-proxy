@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+
+const program = require('commander');
+const pm2 = require('pm2');
+const pkg = require('../package.json');
+
+let procName;
+
+program
+    .version(pkg.version, '-v, --version')
+
+    .arguments('[name]')
+
+    .action((name) => {
+        // console.log(name);
+        procName = name;
+    })
+
+;
+
+program.parse(process.argv);
+
+if (procName) {
+    restart(procName);
+} else {
+    // 直接输出帮助说明
+    program.outputHelp();
+}
+
+function restart(name) {
+    pm2.connect((err) => {
+        exceptError(err);
+
+        pm2.list((err, procDescs) => {
+            exceptError(err);
+            // console.log(procDescs[0], name);
+            (
+                procDescs.length > 0 && (
+                    // 重启全部实例
+                    name === 'all' ||
+                    // 重启匹配实例
+                    procDescs.some((procDesc) =>
+                        procDesc.pm_id === parseInt(name) || procDesc.name === name
+                    )
+                )
+            ) ? pm2.reload(name, (err) => {
+                exceptError(err);
+                console.log(`Process ${name} restarted.`);
+                pm2.disconnect();
+            }) : (() => {
+                console.log(`Process ${name} not exist.`);
+                pm2.disconnect();
+            })();
+
+        });
+
+    });
+}
+
+function exceptError(err) {
+    if (err) {
+        console.error(err);
+        process.exit(1);
+    }
+}
