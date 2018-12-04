@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 
-const program = require('commander');
+const commander = require('commander');
 const pm2 = require('pm2');
 const pkg = require('../package.json');
+const connectPM = require('../lib/connectPM');
+const getProcessList = require('../lib/getProcessList');
+const reloadProcess = require('../lib/reloadProcess');
+const printProcDescs = require('../lib/printProcDescs');
 
 let procName;
 
-program
+commander
     .version(pkg.version, '-v, --version')
 
     .arguments('[name]')
@@ -18,48 +22,33 @@ program
 
 ;
 
-program.parse(process.argv);
+commander.parse(process.argv);
 
 if (procName) {
-    restart(procName);
-} else {
-    // 直接输出帮助说明
-    program.outputHelp();
-}
-
-function restart(name) {
-    pm2.connect((err) => {
-        exceptError(err);
-
-        pm2.list((err, procDescs) => {
-            exceptError(err);
-            // console.log(procDescs[0], name);
-            (
-                procDescs.length > 0 && (
-                    // 重启全部实例
-                    name === 'all' ||
-                    // 重启匹配实例
-                    procDescs.some((procDesc) =>
-                        procDesc.pm_id === parseInt(name) || procDesc.name === name
-                    )
-                )
-            ) ? pm2.reload(name, (err) => {
-                exceptError(err);
-                console.log(`Process ${name} restarted.`);
-                pm2.disconnect();
-            }) : (() => {
-                console.log(`Process ${name} not exist.`);
-                pm2.disconnect();
-            })();
-
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            if (
+                // 重启全部实例
+                procName === 'all' ||
+                // 重启匹配实例
+                procDescs.some(procDesc => procDesc.pm_id === parseInt(procName) || procDesc.name === procName)
+            ) {
+                return reloadProcess(procName);
+            } else {
+                console.log(`Process ${procName} not exist.`);
+                return Promise.resolve();
+            }
+        })
+        .then(() => {
+            pm2.disconnect();
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
         });
 
-    });
-}
-
-function exceptError(err) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
+} else {
+    // 直接输出帮助说明
+    commander.outputHelp();
 }

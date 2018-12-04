@@ -1,15 +1,15 @@
-const program = require('commander');
+const commander = require('commander');
 const App = require('./App');
 const pkg = require('./package.json');
 
-program
+commander
     .version(pkg.version, '-v, --version')
 
     .option('--no-socks', 'Close socks proxy server')
 
     .option('--socks-port <n>', 'Socks proxy server port', Number, 1080)
 
-    .option('--socks-address [address]', 'Socks proxy server address', String, '127.0.0.1')
+    .option('--socks-address [address]', 'Socks proxy server address', String, '0.0.0.0')
 
     .option('--socks-user [username]', 'Socks auth user', String)
 
@@ -18,4 +18,4 @@ program
     .parse(process.argv)
 ;
 
-const instance = new App(program);
+const instance = new App(commander);

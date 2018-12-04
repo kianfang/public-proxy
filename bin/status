@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+
+const pm2 = require('pm2');
+
+const connectPM = require('../lib/connectPM');
+const printProcDescs = require('../lib/printProcDescs');
+const getProcessList = require('../lib/getProcessList');
+
+connectPM()
+    .then(getProcessList)
+    .then((procDescs) => {
+        printProcDescs(procDescs);
+        pm2.disconnect();
+    })
+    .catch((err) => {
+        console.error(err);
+        process.exit(2);
+    });

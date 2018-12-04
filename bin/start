@@ -3,34 +3,37 @@
 const path = require('path');
 const pm2 = require('pm2');
 const pkg = require('../package.json');
+const connectPM = require('../lib/connectPM');
+const getProcessList = require('../lib/getProcessList');
+const deleteProcess = require('../lib/deleteProcess');
+const printProcDescs = require('../lib/printProcDescs');
+const throwError = require('../lib/throwError');
 
-pm2.connect((err) => {
-    // console.log(process.argv);
-    if(err) {
+
+connectPM()
+    .then(getProcessList)
+    .then((procDescs) => {
+        return procDescs.some(procDesc => procDesc.name === pkg.name) ?
+            deleteProcess(pkg.name) : Promise.resolve();
+    })
+    .then(() => {
+        pm2.start({
+            name: pkg.name,
+            script: './index.js',
+            args: process.argv.slice(2),
+            cwd: path.resolve(__dirname, '../'),
+            output: './logs/output.log',
+            error: './logs/error.log',
+            pid: `./logs/pid/${pkg.name}.pid`,
+            exec_mode: 'cluster',
+            instances: 2
+        }, (err, procDescs) => {
+            throwError(err);
+            console.log(`[Success] server start successfully.`);
+            pm2.disconnect();
+        });
+    })
+    .catch((err) => {
         console.error(err);
         process.exit(1);
-    }
-    pm2.start({
-        name: pkg.name,
-        script: './index.js',
-        args: process.argv.slice(2),
-        cwd: path.resolve(__dirname, '../'),
-        output: './logs/output.log',
-        error: './logs/error.log',
-        pid: `./logs/pid/${pkg.name}.pid`,
-        exec_mode: 'cluster',
-        instances: 2
-    }, (err, procDescs) => {
-        exceptError(err);
-        console.log(`[Success] server start successfully.`);
-        pm2.disconnect();
     });
-});
-
-
-function exceptError(err) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-}
