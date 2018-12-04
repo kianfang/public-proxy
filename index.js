@@ -15,6 +15,16 @@ commander
 
     .option('--socks-password [password]', 'Socks auth password', String)
 
+    .option('--no-http', 'Close http proxy server')
+
+    .option('--http-port <n>', 'HTTP proxy server port', Number, 1088)
+
+    .option('--http-address [address]', 'HTTP proxy server address', String, '0.0.0.0')
+
+    .option('--http-user [username]', 'HTTP auth user', String)
+
+    .option('--http-password [password]', 'HTTP auth password', String)
+
     .parse(process.argv)
 ;
 
