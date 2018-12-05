@@ -15,8 +15,17 @@
         "chalk": "^2.4.1",
         "cli-table-redemption": "^1.0.1",
         "commander": "^2.19.0",
+        "lodash": "^4.17.11",
         "pm2": "^3.2.2",
         "proxy": "^0.2.4",
         "socksv5": "0.0.6"
+    },
+    "devDependencies": {
+        "gulp": "^3.9.1",
+        "gulp-add": "^0.1.0",
+        "gulp-add-src": "^1.0.0",
+        "gulp-uglify-es": "^1.0.4",
+        "gulp-util": "^3.0.8",
+        "gulp-zip": "^4.2.0"
     }
 }

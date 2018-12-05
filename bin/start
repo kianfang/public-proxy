@@ -19,10 +19,11 @@ const rl = readline.createInterface({
 connectPM()
     .then(getProcessList)
     .then((procDescs) => {
-        if(procDescs.some(procDesc => procDesc.name === pkg.name)) {
+        if (procDescs.some(procDesc => procDesc.name === pkg.name)) {
             return new Promise((resolve) => {
+                // 已存在进程，与用户确认是否要杀掉进程
                 rl.question(`The ${pkg.name} process will be killed ? (Y/n) `, (inputStr) => {
-                    if(inputStr.toLowerCase === 'y') {
+                    if (inputStr.toLowerCase() === 'y') {
                         deleteProcess(pkg.name).then(resolve);
                     } else {
                         console.log(`[Cancel] You can try restart script.`);
@@ -30,11 +31,11 @@ connectPM()
                         process.exit(0);
                     }
                 });
-            })
+            });
 
-        } else {
-            return Promise.resolve();
         }
+
+        return Promise.resolve();
     })
     .then(() => {
         pm2.start({
