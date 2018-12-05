@@ -2,60 +2,109 @@
 
 const path = require('path');
 const pm2 = require('pm2');
-const pkg = require('../package.json');
+const commander = require('commander');
 const connectPM = require('../lib/connectPM');
 const getProcessList = require('../lib/getProcessList');
 const deleteProcess = require('../lib/deleteProcess');
 const printProcDescs = require('../lib/printProcDescs');
 const throwError = require('../lib/throwError');
+const pkg = require('../package.json');
 const readline = require('readline');
+
+
+commander
+    .version(pkg.version, '-v, --version')
+
+    .option('-p, --port <n>', 'Proxy server port', Number, 1080)
+
+    .option('-a, --address [address]', 'Proxy server address', String, '0.0.0.0')
+
+    .option('--auth', 'Proxy server auth')
+
+    .option('--auth-file [filepath]', 'Proxy server auth file', String, path.resolve(__dirname, '../config/htpasswd'))
+
+    .usage('[options] <command>')
+;
+
+commander
+    .command('http')
+    .description('开启HTTP代理')
+    .action((options) => {
+        let args = '--no-socks';
+
+        options.parent.port && (args += ` --http-port ${options.parent.port}`);
+        options.parent.address && (args += ` --http-address ${options.parent.address}`);
+        options.parent.auth && (args += ` --http-auth ${options.parent.authFile}`);
+        start(`${pkg.name}-http`, args)
+    })
+;
+
+commander
+    .command('socks')
+    .description('开启Socks代理')
+    .action((options) => {
+        // console.log(options);
+        let args = '--no-http';
+        options.parent.port && (args += ` --socks-port ${options.parent.port}`);
+        options.parent.address && (args += ` --socks-address ${options.parent.address}`);
+        options.parent.auth && (args += ` --socks-auth ${options.parent.authFile}`);
+        start(`${pkg.name}-socks`, args)
+    })
+;
+
+commander.parse(process.argv);
+
+if (!commander.args.length) commander.help();
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-
-connectPM()
-    .then(getProcessList)
-    .then((procDescs) => {
-        if (procDescs.some(procDesc => procDesc.name === pkg.name)) {
-            return new Promise((resolve) => {
-                // 已存在进程，与用户确认是否要杀掉进程
-                rl.question(`The ${pkg.name} process will be killed ? (Y/n) `, (inputStr) => {
-                    if (inputStr.toLowerCase() === 'y') {
-                        deleteProcess(pkg.name).then(resolve);
-                    } else {
-                        console.log(`[Cancel] You can try restart script.`);
-                        pm2.disconnect();
-                        process.exit(0);
-                    }
+function start(proc, args) {
+    // console.log(proc, args);
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            if (procDescs.some(procDesc => procDesc.name === proc)) {
+                return new Promise((resolve) => {
+                    // 已存在进程，与用户确认是否要杀掉进程
+                    rl.question(`The ${proc} process will be killed ? (Y/n) `, (inputStr) => {
+                        if (inputStr.toLowerCase() === 'y') {
+                            deleteProcess(proc).then(resolve);
+                        } else {
+                            console.log(`[Cancel] You can try restart script.`);
+                            pm2.disconnect();
+                            process.exit(0);
+                        }
+                    });
                 });
+
+            }
+
+            return Promise.resolve();
+        })
+        .then(() => {
+            pm2.start({
+                name: proc,
+                script: './index.js',
+                // args: process.argv.slice(2),
+                args: args,
+                cwd: path.resolve(__dirname, '../'),
+                output: `./logs/${proc}-output.log`,
+                error: `./logs/${proc}-error.log`,
+                pid: `./logs/pid/${proc}.pid`,
+                exec_mode: 'cluster',
+                instances: 2
+            }, (err, procDescs) => {
+                throwError(err);
+                console.log(`[Success] server start successfully.`);
+                pm2.disconnect();
+                process.exit(0);
             });
-
-        }
-
-        return Promise.resolve();
-    })
-    .then(() => {
-        pm2.start({
-            name: pkg.name,
-            script: './index.js',
-            args: process.argv.slice(2),
-            cwd: path.resolve(__dirname, '../'),
-            output: './logs/output.log',
-            error: './logs/error.log',
-            pid: `./logs/pid/${pkg.name}.pid`,
-            exec_mode: 'cluster',
-            instances: 2
-        }, (err, procDescs) => {
-            throwError(err);
-            console.log(`[Success] server start successfully.`);
-            pm2.disconnect();
-            process.exit(0);
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
         });
-    })
-    .catch((err) => {
-        console.error(err);
-        process.exit(1);
-    });
+}

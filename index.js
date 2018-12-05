@@ -9,21 +9,17 @@ commander
 
     .option('--socks-port <n>', 'Socks proxy server port', Number, 1080)
 
-    .option('--socks-address [address]', 'Socks proxy server address', String, '0.0.0.0')
+    .option('--socks-address [address]', 'Socks proxy server address', String, '127.0.0.1')
 
-    .option('--socks-user [username]', 'Socks auth user', String)
-
-    .option('--socks-password [password]', 'Socks auth password', String)
+    .option('--socks-auth [filepath]', 'Socks auth file', String)
 
     .option('--no-http', 'Close http proxy server')
 
     .option('--http-port <n>', 'HTTP proxy server port', Number, 1088)
 
-    .option('--http-address [address]', 'HTTP proxy server address', String, '0.0.0.0')
+    .option('--http-address [address]', 'HTTP proxy server address', String, '127.0.0.1')
 
-    .option('--http-user [username]', 'HTTP auth user', String)
-
-    .option('--http-password [password]', 'HTTP auth password', String)
+    .option('--http-auth [filepath]', 'HTTP auth file', String)
 
     .parse(process.argv)
 ;
