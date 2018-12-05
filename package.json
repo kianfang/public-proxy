@@ -9,7 +9,11 @@
     "keywords": [
         "proxy"
     ],
-    "author": "Kian",
+    "author": {
+        "name": "Kian",
+        "email": "kian@vsu.cc",
+        "url": "kian.vsu.cc"
+    },
     "license": "ISC",
     "dependencies": {
         "chalk": "^2.4.1",

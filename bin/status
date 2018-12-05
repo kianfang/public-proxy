@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
 const pm2 = require('pm2');
-
 const connectPM = require('../lib/connectPM');
 const printProcDescs = require('../lib/printProcDescs');
 const getProcessList = require('../lib/getProcessList');
+const pkg = require('../package.json');
 
 connectPM()
     .then(getProcessList)
     .then((procDescs) => {
-        printProcDescs(procDescs);
+        printProcDescs(procDescs.filter(
+            procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
+        ));
         pm2.disconnect();
         process.exit(0);
     })
     .catch((err) => {
         console.error(err);
         process.exit(1);
-    });
+    })
+;

@@ -1,44 +1,62 @@
 #!/usr/bin/env node
 
-const commander = require('commander');
 const pm2 = require('pm2');
+const {defaultTo, isUndefined} = require('lodash');
+const commander = require('commander');
 const pkg = require('../package.json');
 const connectPM = require('../lib/connectPM');
 const getProcessList = require('../lib/getProcessList');
 const deleteProcess = require('../lib/deleteProcess');
 const stopProcess = require('../lib/stopProcess');
 
-let procName;
-
 commander
     .version(pkg.version, '-v, --version')
 
-    .option('-d, --delete', 'Stop and delete the instance.')
+    .option('-d, --delete', 'Stop proxy server and delete the instance.')
 
-    .arguments('[name]')
+    .option('-i, --id <n>', 'Restart specified instance', Number)
 
-    .action((name) => {
-        // console.log(name);
-        procName = name;
-    })
-
+    .usage('[options] <command>')
 ;
+
+commander
+    .command('http [others...]')
+    .description('Stop HTTP proxy server.')
+    .action((others, options) => {
+        // console.log(others, options);
+        stop(`${pkg.name}-http`, options.parent.delete, options.parent.id)
+    })
+;
+
+commander
+    .command('socks [others...]')
+    .description('Stop Socks proxy server.')
+    .action((others, options) => {
+        // console.log(options);
+        stop(`${pkg.name}-socks`, options.parent.delete, options.parent.id)
+    })
+;
+
 
 commander.parse(process.argv);
 
-if (procName) {
+if (!commander.args.length) commander.help(); // 直接输出帮助说明
+
+function stop(proc, isDelete, id) {
     connectPM()
         .then(getProcessList)
         .then((procDescs) => {
             if (
-                // 停止全部实例
-                procName === 'all' ||
                 // 停止匹配实例
-                procDescs.some(procDesc => procDesc.pm_id === parseInt(procName) || procDesc.name === procName)
+                procDescs.some(
+                    procDesc =>
+                        procDesc.name === proc &&
+                        isUndefined(id) ? true : procDesc.pm_id === id
+                )
             ) {
-                return commander.delete ? deleteProcess(procName) : stopProcess(procName)
+                return isDelete ? deleteProcess(defaultTo(id, proc)) : stopProcess(defaultTo(id, proc))
             } else {
-                console.log(`Process ${procName} not exist.`);
+                console.log(`[Fail] Process ${proc}${isUndefined(id) ? '' : `(${id})`} not exist.`);
                 return Promise.resolve();
             }
         })
@@ -49,9 +67,6 @@ if (procName) {
         .catch((err) => {
             console.error(err);
             process.exit(1);
-        });
-} else {
-    // 直接输出帮助说明
-    commander.outputHelp();
+        })
+    ;
 }
-

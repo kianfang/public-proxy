@@ -27,9 +27,9 @@ commander
 ;
 
 commander
-    .command('http')
-    .description('开启HTTP代理')
-    .action((options) => {
+    .command('http [others...]')
+    .description('Start HTTP proxy server.')
+    .action((others, options) => {
         let args = '--no-socks';
 
         options.parent.port && (args += ` --http-port ${options.parent.port}`);
@@ -40,9 +40,9 @@ commander
 ;
 
 commander
-    .command('socks')
-    .description('开启Socks代理')
-    .action((options) => {
+    .command('socks [others...]')
+    .description('Start Socks proxy server.')
+    .action((others, options) => {
         // console.log(options);
         let args = '--no-http';
         options.parent.port && (args += ` --socks-port ${options.parent.port}`);
@@ -98,7 +98,7 @@ function start(proc, args) {
                 instances: 2
             }, (err, procDescs) => {
                 throwError(err);
-                console.log(`[Success] server start successfully.`);
+                console.log(`[Success]server start successfully.`);
                 pm2.disconnect();
                 process.exit(0);
             });
@@ -106,5 +106,6 @@ function start(proc, args) {
         .catch((err) => {
             console.error(err);
             process.exit(1);
-        });
+        })
+    ;
 }
