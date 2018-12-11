@@ -1,10 +1,5 @@
 # public-proxy
 
-## Reference
-- [https://github.com/mscdex/socksv5](https://github.com/mscdex/socksv5)
-- [https://github.com/sequoiar/socks5](https://github.com/sequoiar/socks5)
-- [https://github.com/TooTallNate/proxy](https://github.com/TooTallNate/proxy)
-
 
 ## Install
 ```shell
@@ -27,6 +22,18 @@ public-proxy start http
 public-proxy start socks
 ``` 
 
+## Run status
+```shell
+# Get socks server and http server status.
+public-proxy status
+
+# Get socks server status only.
+public-proxy status socks
+
+# Get http server status only.
+public-proxy status http
+```
+
 ## Add proxy auth
 - Install htpasswd
 ```shell
@@ -42,3 +49,9 @@ htpasswd -b ./config/htpasswd username password
 ```shell
 htpasswd -D ./config/htpasswd username
 ```
+
+## Reference
+- [https://github.com/mscdex/socksv5](https://github.com/mscdex/socksv5)
+- [https://github.com/sequoiar/socks5](https://github.com/sequoiar/socks5)
+- [https://github.com/TooTallNate/proxy](https://github.com/TooTallNate/proxy)
+

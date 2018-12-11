@@ -14,6 +14,8 @@ const throwError = require('../lib/throwError');
 const pkg = require('../package.json');
 const {defaultTo, isUndefined} = require('lodash');
 
+const PUBLIC_PROXY_HOME = path.resolve(os.homedir(), '.public-proxy');
+
 commander
     .version(pkg.version, '-v, --version')
 
@@ -31,7 +33,7 @@ commander
 
     .option('--auth', 'Proxy server auth')
 
-    .option('--auth-file [filepath]', 'Proxy server auth file', String, path.resolve(__dirname, '../config/htpasswd'))
+    .option('--auth-file [filepath]', 'Proxy server auth file', String, path.resolve(PUBLIC_PROXY_HOME, 'htpasswd'))
 
     .action((server, options) => {
         let args = '';
@@ -85,12 +87,16 @@ commander
 ;
 
 commander
-    .command('status')
+    .command('status [server]')
 
     .description('Show proxy server status.')
 
-    .action(() => {
-        status();
+    .action((server) => {
+        if(server && ['socks', 'http'].indexOf(server) === -1) {
+            commander.outputHelp();
+            process.exit(1);
+        }
+        status(server ? `${pkg.name}-${server}` : null);
     })
 ;
 
@@ -134,9 +140,9 @@ function start(proc, args) {
                 // args: process.argv.slice(2),
                 args: args,
                 cwd: path.resolve(__dirname, '../'),
-                output: path.resolve(os.homedir(), '.public-proxy', `./logs/${proc}-output.log`),
-                error: path.resolve(os.homedir(), '.public-proxy', `./logs/${proc}-error.log`),
-                pid: path.resolve(os.homedir(), '.public-proxy', `./pid/${proc}.pid`),
+                output: path.resolve(PUBLIC_PROXY_HOME, `./logs/${proc}-output.log`),
+                error: path.resolve(PUBLIC_PROXY_HOME, `./logs/${proc}-error.log`),
+                pid: path.resolve(PUBLIC_PROXY_HOME, `./pid/${proc}.pid`),
                 exec_mode: 'cluster',
                 instances: 2
             }, (err, procDescs) => {
@@ -182,12 +188,12 @@ function stop(proc, isDelete, id) {
     ;
 }
 
-function status() {
+function status(proc) {
     connectPM()
         .then(getProcessList)
         .then((procDescs) => {
             printProcDescs(procDescs.filter(
-                procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
+                procDesc => proc ? proc === procDesc.name: [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
             ));
             pm2.disconnect();
             process.exit(0);
