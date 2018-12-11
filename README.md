@@ -1,31 +1,44 @@
+# public-proxy
+
 ## Reference
 - [https://github.com/mscdex/socksv5](https://github.com/mscdex/socksv5)
 - [https://github.com/sequoiar/socks5](https://github.com/sequoiar/socks5)
 - [https://github.com/TooTallNate/proxy](https://github.com/TooTallNate/proxy)
 
 
-## 使用HTTP代理
+## Install
 ```shell
-./start http
+npm install -g public-proxy
 ```
 
-## 使用Socks代理
+## Get help
 ```shell
-./start socks
+public-proxy --help
+public-proxy start|restart|stop --help
+```
+
+## Use HTTP proxy
+```shell
+public-proxy start http
+```
+
+## Use Socks proxy
+```shell
+public-proxy start socks
 ``` 
 
-## 添加代理认证用户
-- 安装htpasswd工具
+## Add proxy auth
+- Install htpasswd
 ```shell
 npm install -g htpasswd
 ```
 
-- 添加/修改用户
+- Add/Modify user
 ```shell
 htpasswd -b ./config/htpasswd username password
 ```
 
-- 删除用户
+- Delete user
 ```shell
 htpasswd -D ./config/htpasswd username
 ```

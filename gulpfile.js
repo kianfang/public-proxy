@@ -21,7 +21,7 @@ gulp.task('zip', () =>
             './bin/**',
             './node_modules/**'
         ], {base: '.'}))
-        .pipe(add({'package.json': JSON.stringify(pick(pkg, ['name', 'version', 'scripts']))}))
+        .pipe(add({'package.json': JSON.stringify(pick(pkg, ['name', 'version', 'scripts', 'dependencies']))}))
         .pipe(zip(`${pkg.name}.zip`))
         .pipe(gulp.dest('./dist'))
 );

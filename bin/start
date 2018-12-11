@@ -6,7 +6,6 @@ const commander = require('commander');
 const connectPM = require('../lib/connectPM');
 const getProcessList = require('../lib/getProcessList');
 const deleteProcess = require('../lib/deleteProcess');
-const printProcDescs = require('../lib/printProcDescs');
 const throwError = require('../lib/throwError');
 const pkg = require('../package.json');
 const readline = require('readline');

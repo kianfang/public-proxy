@@ -1,0 +1,229 @@
+#!/usr/bin/env node
+
+const pm2 = require('pm2');
+const path = require('path');
+const os = require('os');
+const readline = require('readline');
+const commander = require('commander');
+const connectPM = require('../lib/connectPM');
+const getProcessList = require('../lib/getProcessList');
+const deleteProcess = require('../lib/deleteProcess');
+const stopProcess = require('../lib/stopProcess');
+const printProcDescs = require('../lib/printProcDescs');
+const throwError = require('../lib/throwError');
+const pkg = require('../package.json');
+const {defaultTo, isUndefined} = require('lodash');
+
+commander
+    .version(pkg.version, '-v, --version')
+
+    .usage('<command> [options]')
+;
+
+commander
+    .command('start <server>')
+
+    .description('Start [socks|http] proxy server.')
+
+    .option('-p, --port <n>', 'Proxy server port', Number, 1080)
+
+    .option('-a, --address [address]', 'Proxy server address', String, '0.0.0.0')
+
+    .option('--auth', 'Proxy server auth')
+
+    .option('--auth-file [filepath]', 'Proxy server auth file', String, path.resolve(__dirname, '../config/htpasswd'))
+
+    .action((server, options) => {
+        let args = '';
+        if(server === 'socks') {
+            args += '--no-http';
+        } else if(server === 'http') {
+            args += '--no-socks';
+        } else {
+            commander.outputHelp();
+            process.exit(1);
+        }
+        options.port && (args += ` --socks-port ${options.port}`);
+        options.address && (args += ` --socks-address ${options.address}`);
+        options.auth && (args += ` --socks-auth ${options.authFile}`);
+        start(`${pkg.name}-socks`, args)
+    })
+;
+
+commander
+    .command('restart <server>')
+
+    .description('Restart [socks|http] proxy server.')
+
+    .option('-i, --id <n>', 'Restart specified instance', Number)
+
+    .action((server, options) => {
+        if(['socks', 'http'].indexOf(server) === -1) {
+            commander.outputHelp();
+            process.exit(1);
+        }
+        restart(`${pkg.name}-socks`, options.id)
+    })
+;
+
+commander
+    .command('stop <server>')
+
+    .description('Stop [socks|http] proxy server.')
+
+    .option('-d, --delete', 'Stop proxy server and delete the instance.')
+
+    .option('-i, --id <n>', 'Restart specified instance', Number)
+
+    .action((server, options) => {
+        if(['socks', 'http'].indexOf(server) === -1) {
+            commander.outputHelp();
+            process.exit(1);
+        }
+        stop(`${pkg.name}-${server}`, options.delete, options.id)
+    })
+;
+
+commander
+    .command('status')
+
+    .description('Show proxy server status.')
+
+    .action(() => {
+        status();
+    })
+;
+
+
+commander.parse(process.argv);
+
+if (!commander.args.length) commander.help();
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+function start(proc, args) {
+    // console.log(proc, args);
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            if (procDescs.some(procDesc => procDesc.name === proc)) {
+                return new Promise((resolve) => {
+                    // 已存在进程，与用户确认是否要杀掉进程
+                    rl.question(`The ${proc} process will be killed ? (Y/n) `, (inputStr) => {
+                        if (inputStr.toLowerCase() === 'y') {
+                            deleteProcess(proc).then(resolve);
+                        } else {
+                            console.log(`[Cancel] You can try restart script.`);
+                            pm2.disconnect();
+                            process.exit(0);
+                        }
+                    });
+                });
+
+            }
+
+            return Promise.resolve();
+        })
+        .then(() => {
+            pm2.start({
+                name: proc,
+                script: './index.js',
+                // args: process.argv.slice(2),
+                args: args,
+                cwd: path.resolve(__dirname, '../'),
+                output: path.resolve(os.homedir(), '.public-proxy', `./logs/${proc}-output.log`),
+                error: path.resolve(os.homedir(), '.public-proxy', `./logs/${proc}-error.log`),
+                pid: path.resolve(os.homedir(), '.public-proxy', `./pid/${proc}.pid`),
+                exec_mode: 'cluster',
+                instances: 2
+            }, (err, procDescs) => {
+                throwError(err);
+                console.log(`[Success]server start successfully.`);
+                pm2.disconnect();
+                process.exit(0);
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        })
+    ;
+}
+
+function stop(proc, isDelete, id) {
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            if (
+                // 停止匹配实例
+                procDescs.some(
+                    procDesc =>
+                        procDesc.name === proc &&
+                        isUndefined(id) ? true : procDesc.pm_id === id
+                )
+            ) {
+                return isDelete ? deleteProcess(defaultTo(id, proc)) : stopProcess(defaultTo(id, proc))
+            } else {
+                console.log(`[Fail] Process ${proc}${isUndefined(id) ? '' : `(${id})`} not exist.`);
+                return Promise.resolve();
+            }
+        })
+        .then(() => {
+            pm2.disconnect();
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        })
+    ;
+}
+
+function status() {
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            printProcDescs(procDescs.filter(
+                procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
+            ));
+            pm2.disconnect();
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        })
+    ;
+}
+
+function restart(proc, id) {
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            if (
+                // 重启匹配实例
+                procDescs.some(
+                    procDesc =>
+                        procDesc.name === proc &&
+                        isUndefined(id) ? true : procDesc.pm_id === id
+                )
+            ) {
+                return reloadProcess(defaultTo(id, proc));
+            } else {
+                console.log(`[Fail] Process ${proc}${isUndefined(id) ? '' : `(${id})`} not exist.`);
+                return Promise.resolve();
+            }
+        })
+        .then(() => {
+            pm2.disconnect();
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        })
+    ;
+}

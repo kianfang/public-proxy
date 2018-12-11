@@ -1,13 +1,20 @@
 {
     "name": "public-proxy",
     "version": "0.0.1",
-    "description": "Socks5 proxy",
+    "description": "Socks5 proxy and http proxy.",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "log": "pm2 log",
+        "zip": "gulp zip"
+    },
+    "bin": {
+        "public-proxy": "./bin/public-proxy"
     },
     "keywords": [
-        "proxy"
+        "proxy",
+        "public proxy",
+        "http proxy",
+        "socks proxy"
     ],
     "author": {
         "name": "Kian",
