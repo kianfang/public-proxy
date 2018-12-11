@@ -39,5 +39,9 @@
         "gulp-uglify-es": "^1.0.4",
         "gulp-util": "^3.0.8",
         "gulp-zip": "^4.2.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/waiwaiku/public-proxy"
     }
 }

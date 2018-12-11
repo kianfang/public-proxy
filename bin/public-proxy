@@ -89,7 +89,7 @@ commander
 commander
     .command('status [server]')
 
-    .description('Show proxy server status.')
+    .description('Show [socks|http] proxy server status.')
 
     .action((server) => {
         if(server && ['socks', 'http'].indexOf(server) === -1) {

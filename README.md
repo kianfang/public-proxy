@@ -9,7 +9,7 @@ npm install -g public-proxy
 ## Get help
 ```shell
 public-proxy --help
-public-proxy start|restart|stop --help
+public-proxy start|restart|status|stop --help
 ```
 
 ## Use HTTP proxy
@@ -42,12 +42,12 @@ npm install -g htpasswd
 
 - Add/Modify user
 ```shell
-htpasswd -b ./config/htpasswd username password
+htpasswd -b ~/.public-proxy/htpasswd username password
 ```
 
 - Delete user
 ```shell
-htpasswd -D ./config/htpasswd username
+htpasswd -D ~/.public-proxy/htpasswd username
 ```
 
 ## Reference
