@@ -45,10 +45,10 @@ commander
             commander.outputHelp();
             process.exit(1);
         }
-        options.port && (args += ` --socks-port ${options.port}`);
-        options.address && (args += ` --socks-address ${options.address}`);
-        options.auth && (args += ` --socks-auth ${options.authFile}`);
-        start(`${pkg.name}-socks`, args)
+        options.port && (args += ` --${server}-port ${options.port}`);
+        options.address && (args += ` --${server}-address ${options.address}`);
+        options.auth && (args += ` --${server}-auth ${options.authFile}`);
+        start(`${pkg.name}-${server}`, args)
     })
 ;
 
@@ -64,7 +64,7 @@ commander
             commander.outputHelp();
             process.exit(1);
         }
-        restart(`${pkg.name}-socks`, options.id)
+        restart(`${pkg.name}-${server}`, options.id)
     })
 ;
 

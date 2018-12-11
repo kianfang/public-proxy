@@ -1,6 +1,6 @@
 {
     "name": "public-proxy",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Socks5 proxy and http proxy.",
     "main": "index.js",
     "scripts": {
