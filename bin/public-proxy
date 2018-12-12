@@ -7,8 +7,10 @@ const readline = require('readline');
 const commander = require('commander');
 const connectPM = require('../lib/connectPM');
 const getProcessList = require('../lib/getProcessList');
+const reloadProcess = require('../lib/reloadProcess');
 const deleteProcess = require('../lib/deleteProcess');
 const stopProcess = require('../lib/stopProcess');
+const killDeamon = require('../lib/killDaemon');
 const printProcDescs = require('../lib/printProcDescs');
 const throwError = require('../lib/throwError');
 const pkg = require('../package.json');
@@ -87,7 +89,7 @@ commander
 ;
 
 commander
-    .command('status [server]')
+    .command('status <server>')
 
     .description('Show [socks|http] proxy server status.')
 
@@ -100,6 +102,49 @@ commander
     })
 ;
 
+commander
+    .command('logs <server>')
+    .description('Stream [socks|http] server logs file.')
+    .option('--json', 'Json log output')
+    .option('--format', 'Formated log output')
+    .option('--raw', 'Raw output')
+    .option('--err', 'Only shows error output')
+    .option('--out', 'Only shows standard output')
+    .option('--lines <n>', 'Output the last N lines, instead of the last 15 by default', Number, 15)
+    .option('--timestamp [format]', 'Add timestamps (default format YYYY-MM-DD-HH:mm:ss)', String, 'YYYY-MM-DD-HH:mm:ss')
+    .option('--no-stream', 'Print logs without lauching the log stream')
+    .action((server, options) => {
+        if(['socks', 'http'].indexOf(server) === -1) {
+            commander.outputHelp();
+            process.exit(1);
+        }
+        let proc = `${pkg.name}-${server}`;
+
+        let Logs = require('pm2/lib/API/Log.js');
+
+        let exclusive = false;
+
+        if (options.out) exclusive = 'out';
+
+        if (options.err) exclusive = 'err';
+
+        if (!options.stream)
+            pm2.printLogs(proc, options.line, !!options.raw, options.timestamp, exclusive);
+        else if (options.json)
+            Logs.jsonStream(pm2.Client, proc);
+        else if (options.format)
+            Logs.formatStream(pm2.Client, proc, false, 'YYYY-MM-DD-HH:mm:ssZZ');
+        else
+            pm2.streamLogs(proc, options.line, !!options.raw, options.timestamp, exclusive);
+    })
+;
+
+commander.command('kill')
+    .description('Kill daemon')
+    .action((proc) => {
+        kill();
+    })
+;
 
 commander.parse(process.argv);
 
@@ -195,6 +240,28 @@ function status(proc) {
             printProcDescs(procDescs.filter(
                 procDesc => proc ? proc === procDesc.name: [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
             ));
+            pm2.disconnect();
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        })
+    ;
+}
+
+function kill() {
+    connectPM()
+        .then(getProcessList)
+        .then((procDescs) => {
+            // 必须确保仅包含http、socks服务，防止误删除
+            if(procDescs.every(procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1)) {
+                return killDeamon();
+            } else {
+                throw new Error('[Fail] Exist other process.');
+            }
+        })
+        .then(() => {
             pm2.disconnect();
             process.exit(0);
         })
