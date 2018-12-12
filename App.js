@@ -1,4 +1,4 @@
-const {readFileSync} = require('fs');
+const {readFileSync, appendFile} = require('fs');
 const http = require('http');
 const socks = require('socksv5');
 const proxy = require('proxy');
@@ -26,6 +26,7 @@ module.exports = class {
     startSocksProxy(config = {}) {
         console.log('[Socks Proxy Config]');
         console.log(JSON.stringify(config, null, 4));
+        this.createAuthFile(config.auth);
 
         let server = socks.createServer((info, accept, deny) => {
             let startTime = new Date().toLocaleString();
@@ -55,6 +56,7 @@ module.exports = class {
     startHttpProxy(config = {}) {
         console.log('[Http Proxy Config]');
         console.log(JSON.stringify(config, null, 4));
+        this.createAuthFile(config.auth);
 
         let server = http.createServer();
 
@@ -95,5 +97,13 @@ module.exports = class {
             console.log(`[${startTime}][HTTP Proxy Info]${extraInfo} ${socket.remoteAddress}:${socket.remotePort} <===> ${req.headers.host}`);
         });
 
+    }
+
+    createAuthFile(path) {
+        if (!path) return;
+        appendFile(path, '', 'utf8', (err) => {
+            if (err) console.error(err);
+            else console.log('[Auth File] Auth file created.');
+        });
     }
 };

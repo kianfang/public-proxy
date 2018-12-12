@@ -192,7 +192,7 @@ function start(proc, args) {
                 instances: 2
             }, (err, procDescs) => {
                 throwError(err);
-                console.log(`[Success]server start successfully.`);
+                console.log(`[Success] Server start successfully.`);
                 pm2.disconnect();
                 process.exit(0);
             });
