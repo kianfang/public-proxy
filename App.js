@@ -46,7 +46,7 @@ module.exports = class {
             // console.log(user, password);
             htpasswd.authenticate(user, pwd, readFileSync(config.auth, 'utf-8')).then((status) => {
                 let startTime = new Date().toLocaleString();
-                if(!status) console.log(`[${startTime}][Socks Proxy Info] Auth fail.`);
+                if(!status) console.log(`[${startTime}][Socks Proxy Info] Auth fail with username ${user}.`);
                 cb(status);
             });
         }) : socks.auth.None();
@@ -89,7 +89,9 @@ module.exports = class {
                         let splitHash = new Buffer(tokens[1], 'base64').toString('utf8').split(':');
 
                         req.authStatus = await htpasswd.authenticate(splitHash[0], splitHash[1], readFileSync(config.auth, 'utf-8'));
-                        console.log(req.authStatus);
+                        // console.log(req.authStatus);
+                        let startTime = new Date().toLocaleString();
+                        if(!req.authStatus) console.log(`[${startTime}][HTTP Proxy Info] Auth fail with username ${splitHash[0]}.`);
                     }
                 }
 
@@ -103,13 +105,12 @@ module.exports = class {
             console.log(`[${startTime}][HTTP Proxy Start] HTTP server listening on host ${config.address}:${config.port}`);
         });
 
-        server.on('connect', (req, socket, head) => {
+        server.on('request', (req, res) => {
             // console.log(req.authStatus);
             // req.connection === socket
             let startTime = new Date().toLocaleString();
             // 开启认证检查是否认证成功
-            let extraInfo = config.auth && !req.authStatus ? '[Auth Failed]' : '';
-            console.log(`[${startTime}][HTTP Proxy Info]${extraInfo} ${socket.remoteAddress}:${socket.remotePort} <===> ${req.headers.host}`);
+            console.log(`[${startTime}][HTTP Proxy Info] ${req.socket.remoteAddress}:${req.socket.remotePort} <===> ${req.headers.host}`);
         });
 
     }

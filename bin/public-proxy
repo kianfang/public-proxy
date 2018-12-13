@@ -113,7 +113,7 @@ commander
     .option('--err', 'Only shows error output')
     .option('--out', 'Only shows standard output')
     .option('--lines <n>', 'Output the last N lines, instead of the last 15 by default', Number, 15)
-    .option('--timestamp [format]', 'Add timestamps (default format YYYY-MM-DD-HH:mm:ss)', String, '[HH:mm:ss]')
+    .option('--timestamp [format]', 'Add timestamps (default format YYYY-MM-DD-HH:mm:ss)', String, 'HH:mm:ss')
     .option('--no-stream', 'Print logs without lauching the log stream')
     .action((server, options) => {
         if (['socks', 'http'].indexOf(server) === -1) {
@@ -135,7 +135,7 @@ commander
         else if (options.json)
             Logs.jsonStream(pm2.Client, proc);
         else if (options.format)
-            Logs.formatStream(pm2.Client, proc, false, '[YYYY-MM-DD HH:mm:ssZZ]');
+            Logs.formatStream(pm2.Client, proc, false, 'YYYY-MM-DD HH:mm:ssZZ');
         else
             pm2.streamLogs(proc, options.line, !!options.raw, options.timestamp, exclusive);
     })
@@ -163,13 +163,15 @@ commander.parse(process.argv);
 
 if (!commander.args.length) commander.help();
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
 function start(proc, args, options) {
-    console.log(proc, args, options);
+    // console.log(proc, args, options);
+
+    let rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
     connectPM()
         .then(getProcessList)
         .then((procDescs) => {
