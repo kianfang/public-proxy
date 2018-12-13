@@ -14,7 +14,7 @@ const killDeamon = require('../lib/killDaemon');
 const printProcDescs = require('../lib/printProcDescs');
 const throwError = require('../lib/throwError');
 const pkg = require('../package.json');
-const {defaultTo, isUndefined} = require('lodash');
+const {defaultTo, isUndefined, pick} = require('lodash');
 
 const PUBLIC_PROXY_HOME = path.resolve(os.homedir(), '.public-proxy');
 
@@ -29,19 +29,21 @@ commander
 
     .description('Start [socks|http] proxy server.')
 
-    .option('-p, --port <n>', 'Proxy server port', Number, 1080)
+    .option('-p, --port <n>', 'Proxy server port.', Number, 1080)
 
-    .option('-a, --address [address]', 'Proxy server address', String, '0.0.0.0')
+    .option('-a, --address <address>', 'Proxy server address.', String, '0.0.0.0')
+
+    .option('-i, --instances <count>', 'Startup count of cluster.', Number, 2)
 
     .option('--auth', 'Proxy server auth')
 
-    .option('--auth-file [filepath]', 'Proxy server auth file', String, path.resolve(PUBLIC_PROXY_HOME, 'htpasswd'))
+    .option('--auth-file <filepath>', 'Proxy server auth file', String, path.resolve(PUBLIC_PROXY_HOME, 'htpasswd'))
 
     .action((server, options) => {
         let args = '';
-        if(server === 'socks') {
+        if (server === 'socks') {
             args += '--no-http';
-        } else if(server === 'http') {
+        } else if (server === 'http') {
             args += '--no-socks';
         } else {
             commander.outputHelp();
@@ -50,7 +52,7 @@ commander
         options.port && (args += ` --${server}-port ${options.port}`);
         options.address && (args += ` --${server}-address ${options.address}`);
         options.auth && (args += ` --${server}-auth ${options.authFile}`);
-        start(`${pkg.name}-${server}`, args)
+        start(`${pkg.name}-${server}`, args, pick(options, ['instances']))
     })
 ;
 
@@ -62,7 +64,7 @@ commander
     .option('-i, --id <n>', 'Restart specified instance', Number)
 
     .action((server, options) => {
-        if(['socks', 'http'].indexOf(server) === -1) {
+        if (['socks', 'http'].indexOf(server) === -1) {
             commander.outputHelp();
             process.exit(1);
         }
@@ -80,7 +82,7 @@ commander
     .option('-i, --id <n>', 'Restart specified instance', Number)
 
     .action((server, options) => {
-        if(['socks', 'http'].indexOf(server) === -1) {
+        if (['socks', 'http'].indexOf(server) === -1) {
             commander.outputHelp();
             process.exit(1);
         }
@@ -89,12 +91,12 @@ commander
 ;
 
 commander
-    .command('status <server>')
+    .command('status [server]')
 
     .description('Show [socks|http] proxy server status.')
 
     .action((server) => {
-        if(server && ['socks', 'http'].indexOf(server) === -1) {
+        if (server && ['socks', 'http'].indexOf(server) === -1) {
             commander.outputHelp();
             process.exit(1);
         }
@@ -103,7 +105,7 @@ commander
 ;
 
 commander
-    .command('logs <server>')
+    .command('log [server]')
     .description('Stream [socks|http] server logs file.')
     .option('--json', 'Json log output')
     .option('--format', 'Formated log output')
@@ -111,10 +113,10 @@ commander
     .option('--err', 'Only shows error output')
     .option('--out', 'Only shows standard output')
     .option('--lines <n>', 'Output the last N lines, instead of the last 15 by default', Number, 15)
-    .option('--timestamp [format]', 'Add timestamps (default format YYYY-MM-DD-HH:mm:ss)', String, 'YYYY-MM-DD-HH:mm:ss')
+    .option('--timestamp [format]', 'Add timestamps (default format YYYY-MM-DD-HH:mm:ss)', String, '[HH:mm:ss]')
     .option('--no-stream', 'Print logs without lauching the log stream')
     .action((server, options) => {
-        if(['socks', 'http'].indexOf(server) === -1) {
+        if (['socks', 'http'].indexOf(server) === -1) {
             commander.outputHelp();
             process.exit(1);
         }
@@ -133,7 +135,7 @@ commander
         else if (options.json)
             Logs.jsonStream(pm2.Client, proc);
         else if (options.format)
-            Logs.formatStream(pm2.Client, proc, false, 'YYYY-MM-DD-HH:mm:ssZZ');
+            Logs.formatStream(pm2.Client, proc, false, '[YYYY-MM-DD HH:mm:ssZZ]');
         else
             pm2.streamLogs(proc, options.line, !!options.raw, options.timestamp, exclusive);
     })
@@ -146,6 +148,17 @@ commander.command('kill')
     })
 ;
 
+/**
+ * 捕获其它错误命令
+ */
+commander.command('*')
+    .action(() => {
+        console.log('Command not found.');
+        console.log('Please through "public-proxy --help" command get more info.\n');
+        process.exit(1);
+    })
+;
+
 commander.parse(process.argv);
 
 if (!commander.args.length) commander.help();
@@ -155,15 +168,15 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-function start(proc, args) {
-    // console.log(proc, args);
+function start(proc, args, options) {
+    console.log(proc, args, options);
     connectPM()
         .then(getProcessList)
         .then((procDescs) => {
             if (procDescs.some(procDesc => procDesc.name === proc)) {
                 return new Promise((resolve) => {
                     // 已存在进程，与用户确认是否要杀掉进程
-                    rl.question(`The ${proc} process will be killed ? (Y/n) `, (inputStr) => {
+                    rl.question(`The ${proc} process will be killed ? (y/N) `, (inputStr) => {
                         if (inputStr.toLowerCase() === 'y') {
                             deleteProcess(proc).then(resolve);
                         } else {
@@ -189,7 +202,7 @@ function start(proc, args) {
                 error: path.resolve(PUBLIC_PROXY_HOME, `./logs/${proc}-error.log`),
                 pid: path.resolve(PUBLIC_PROXY_HOME, `./pid/${proc}.pid`),
                 exec_mode: 'cluster',
-                instances: 2
+                instances: options.instances
             }, (err, procDescs) => {
                 throwError(err);
                 console.log(`[Success] Server start successfully.`);
@@ -238,7 +251,7 @@ function status(proc) {
         .then(getProcessList)
         .then((procDescs) => {
             printProcDescs(procDescs.filter(
-                procDesc => proc ? proc === procDesc.name: [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
+                procDesc => proc ? proc === procDesc.name : [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1
             ));
             pm2.disconnect();
             process.exit(0);
@@ -255,7 +268,7 @@ function kill() {
         .then(getProcessList)
         .then((procDescs) => {
             // 必须确保仅包含http、socks服务，防止误删除
-            if(procDescs.every(procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1)) {
+            if (procDescs.every(procDesc => [`${pkg.name}-http`, `${pkg.name}-socks`].indexOf(procDesc.name) > -1)) {
                 return killDeamon();
             } else {
                 throw new Error('[Fail] Exist other process.');

@@ -6,12 +6,14 @@ const htpasswd = require('htpasswd-auth');
 
 module.exports = class {
     constructor(options = {}) {
+        // 获取socks代理配置
         options.socks && this.startSocksProxy({
             port: options.socksPort,
             address: options.socksAddress,
             auth: options.socksAuth
         });
 
+        // 获取http代理配置
         options.http && this.startHttpProxy({
             port: options.httpPort,
             address: options.httpAddress,
@@ -26,7 +28,7 @@ module.exports = class {
     startSocksProxy(config = {}) {
         console.log('[Socks Proxy Config]');
         console.log(JSON.stringify(config, null, 4));
-        this.createAuthFile(config.auth);
+        createAuthFile(config.auth);
 
         let server = socks.createServer((info, accept, deny) => {
             let startTime = new Date().toLocaleString();
@@ -40,13 +42,26 @@ module.exports = class {
             console.log(`[${startTime}][Socks Proxy Start] SOCKS server listening on host ${config.address}:${config.port}`);
         });
 
+        let authConfig = config.auth ? socks.auth.UserPassword((user, pwd, cb) => {
+            // console.log(user, password);
+            htpasswd.authenticate(user, pwd, readFileSync(config.auth, 'utf-8')).then((status) => {
+                let startTime = new Date().toLocaleString();
+                if(!status) console.log(`[${startTime}][Socks Proxy Info] Auth fail.`);
+                cb(status);
+            });
+        }) : socks.auth.None();
+
         // 账号认证
-        server.useAuth(
-            config.auth ? socks.auth.UserPassword((user, pwd, cb) => {
-                // console.log(user, password);
-                htpasswd.authenticate(user, pwd, readFileSync(config.auth, 'utf-8')).then(cb);
-            }) : socks.auth.None()
-        );
+        server.useAuth({
+            ...authConfig,
+            server: (socket, cb) => {
+                if(config.auth) {
+                    let startTime = new Date().toLocaleString();
+                    console.log(`[${startTime}][Socks Proxy Auth] Auth from host ${socket.remoteAddress}:${socket.remotePort}`);
+                }
+                authConfig.server(socket, cb);
+            }
+        });
     }
 
     /**
@@ -56,7 +71,7 @@ module.exports = class {
     startHttpProxy(config = {}) {
         console.log('[Http Proxy Config]');
         console.log(JSON.stringify(config, null, 4));
-        this.createAuthFile(config.auth);
+        createAuthFile(config.auth);
 
         let server = http.createServer();
 
@@ -99,11 +114,12 @@ module.exports = class {
 
     }
 
-    createAuthFile(path) {
-        if (!path) return;
-        appendFile(path, '', 'utf8', (err) => {
-            if (err) console.error(err);
-            else console.log('[Auth File] Auth file created.');
-        });
-    }
 };
+
+function createAuthFile(path) {
+    if (!path) return;
+    appendFile(path, '', 'utf8', (err) => {
+        if (err) console.error(err);
+        else console.log('[Auth File] Auth file created.');
+    });
+}
